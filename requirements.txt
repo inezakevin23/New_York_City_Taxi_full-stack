@@ -3,3 +3,4 @@ pandas
 pyarrow
 geopandas
 numpy
+mysql-connector-python
