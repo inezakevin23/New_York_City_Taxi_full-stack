@@ -1,0 +1,5 @@
+flask
+pandas
+pyarrow
+geopandas
+numpy
