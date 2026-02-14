@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from datetime import datetime
 from integration import load_trip_data, load_taxi_zone_lookup, integrate_data
+import numpy as np
 
 def clean_data(df):
 
@@ -25,6 +26,11 @@ def clean_data(df):
     # converting datetimes
     df['tpep_pickup_datetime'] = pd.to_datetime(df['tpep_pickup_datetime'], errors='coerce')
     df['tpep_dropoff_datetime'] = pd.to_datetime(df['tpep_dropoff_datetime'], errors='coerce')
+
+    # ensuring numeric types
+    numeric_cols = ['VendorID', 'trip_distance', 'fare_amount', 'passenger_count', 'PU_LocationID', 'DO_LocationID', 'total_amount', 'tip_amount', 'extra', 'mta_tax', 'tolls_amount']
+    for col in numeric_cols:
+        df[col] = pd.to_numeric(df[col], errors='coerce')
     
     # removing logical outliers
     before = len(df)
@@ -32,7 +38,7 @@ def clean_data(df):
     issue_counts['nonpositive_trip_distance'] = before - len(df)
 
     before = len(df)
-    df = df[df['fare_amount'] >= 0]
+    df = df[df['fare_amount'] > 0]
     issue_counts['negative_fare_amount'] = before - len(df)
 
     before = len(df)
@@ -63,6 +69,17 @@ def clean_data(df):
             f.write(f"{issue}: {count}\n")
     return df, issue_counts
 
+
+# finding derived features
+def find_derived_features(df):
+    # trip duration in minutes
+    df['trip_duration'] = (df['tpep_dropoff_datetime'] - df['tpep_pickup_datetime']).dt.total_seconds() / 60
+    # fare per mile
+    df['fare_per_mile'] = np.where(df['trip_distance'] > 0, df['fare_amount'] / df['trip_distance'], np.nan)
+    # trip speed in miles per hour
+    df['trip_speed'] = np.where(df['trip_duration'] > 0, df['trip_distance'] / (df['trip_duration'] / 60), np.nan)
+    return df
+
 if __name__ == "__main__":
     # loading data
     trip_data = Path(__file__).resolve().parent / ".." / "data" / "yellow_tripdata_2019-01.csv"
@@ -74,3 +91,6 @@ if __name__ == "__main__":
     # cleaning data
     cleaned_trips, issue_counts = clean_data(integrated_trips)
     print("data cleaning completed")
+    # finding derived features
+    final_trips = find_derived_features(cleaned_trips)
+    print("derived features added")
