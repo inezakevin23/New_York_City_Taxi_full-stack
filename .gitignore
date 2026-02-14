@@ -1,0 +1,7 @@
+# Data files - NEVER commit
+*.csv
+__pycache__/
+*.py[cod]
+*.egg-info/
+.cache/
+.git/lfs/
