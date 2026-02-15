@@ -29,10 +29,33 @@ body {
     line-height: 1.6;
     min-height: 100vh;
 }
-.dark-mode {
-    background-color: black;
-    color: white;
+/* Dark mode variables (applied when data-theme="dark" on <html>) */
+html[data-theme="dark"] {
+    --bg: #121212;
+    --surface: #1e1e1e;
+    --surface-2: #222;
+    --border: #333;
+    --border-2: #444;
+    --ink: #f9f9f9;
+    --ink-2: #e0e0e0;
+    --ink-3: #aaaaaa;
+    --accent: #888;
+    --accent-hover: #bbb;
 }
+#toggle-mode {
+    position: fixed !important;
+    top: 20px !important;
+    right: 20px !important;
+    z-index: 9999 !important;
+
+    padding: 8px 16px;
+    background: #062648;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
 
 /* ─── Menu Button ────────────────────────────────────────────── */
 .menu-btn {

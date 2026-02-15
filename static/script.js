@@ -177,5 +177,37 @@ function updateCharts(data) {
     });
 }
 
+// script.js
+const toggleBtn = document.getElementById('toggle-mode');
+const htmlElement = document.documentElement; // Target the <html> element
+
+const currentTheme = localStorage.getItem('theme'); // Get saved theme from localStorage
+
+// Apply saved theme on page load, or default to system preference if no theme saved
+if (currentTheme) {
+    htmlElement.setAttribute('data-theme', currentTheme);
+    if (currentTheme === 'dark') {
+        toggleBtn.textContent = 'Switch to Light Mode';
+    }
+} else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    // Detect OS preference if no localStorage item is found
+    htmlElement.setAttribute('data-theme', 'dark');
+    toggleBtn.textContent = 'Switch to Light Mode';
+}
+
+// Add an event listener to the toggle button
+toggleBtn.addEventListener('click', () => {
+    let theme = htmlElement.getAttribute('data-theme');
+    if (theme === 'light') {
+        theme = 'dark';
+        toggleBtn.textContent = 'Switch to Light Mode';
+    } else {
+        theme = 'light';
+        toggleBtn.textContent = 'Switch to Dark Mode';
+    }
+    htmlElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme); // Save the new preference
+});
+
 /* ── Init ────────────────────────────────────────────────────── */
 document.addEventListener("DOMContentLoaded", applyFilters);
