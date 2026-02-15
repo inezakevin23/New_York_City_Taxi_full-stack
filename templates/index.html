@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NYC Taxi Dashboard</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <link rel="stylesheet" href="/static/main.css">
+</head>
+<body>
+    
+    <!-- Main Content -->
+    <section id="main-section" class="main-section">
+
+        <header class="page-header">
+            <h1 class="page-title">NYC Taxi<br><span>Dashboard</span></h1>
+        </header>
+
+        <!-- Filtering Section -->
+        <section class="filter-section">
+            <h2>Filter Trips</h2>
+
+            <div class="filter-controls">
+                <div class="filter-group">
+                    <label for="vendor">Vendor</label>
+                    <select id="vendor">
+                        <option value="">All vendors</option>
+                        <option value="1">Vendor 1</option>
+                        <option value="2">Vendor 2</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="from-zone">From zone</label>
+                    <select id="from-zone">
+                        <option value="">Any zone</option>
+                        <option value="Yellow Zone">Yellow Zone</option>
+                        <option value="Boro Zone">Boro Zone</option>
+                        <option value="Airports">Airports</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="to-zone">To zone</label>
+                    <select id="to-zone">
+                        <option value="">Any zone</option>
+                        <option value="Yellow Zone">Yellow Zone</option>
+                        <option value="Boro Zone">Boro Zone</option>
+                        <option value="Airports">Airports</option>
+                    </select>
+                </div>
+
+                <div class="filter-group price-range">
+                    <label>Price range</label>
+                    <div class="price-inputs">
+                        <input type="number" id="min_price" placeholder="Min $" min="0">
+                        <span class="range-sep">—</span>
+                        <input type="number" id="max_price" placeholder="Max $" min="0">
+                    </div>
+                </div>
+
+                <button class="filter-btn" onclick="applyFilters()">Apply filters</button>
+            </div>
+
+            <!-- Results Table -->
+            <!-- Columns: VendorID, tpep_pickup_datetime, tpep_dropoff_datetime,
+                          PULocationID, DOLocationID, trip_distance, fare_amount -->
+            <div class="table-wrapper">
+                <div id="table-status" class="table-status">Loading trips…</div>
+                <table class="price-table" id="trips-table">
+                    <thead>
+                        <tr>
+                            <th>Vendor</th>
+                            <th>Pickup time</th>
+                            <th>Dropoff time</th>
+                            <th>From (ID)</th>
+                            <th>To (ID)</th>
+                            <th>Distance (mi)</th>
+                            <th>Fare</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Comparison Section -->
+        <section class="comparison-section">
+            <h2>Vendor Comparison</h2>
+            <p class="section-desc">Average fare price per vendor based on active filters</p>
+
+            <div class="comparison-grid">
+
+                <!-- Bar chart — price comparison per vendor -->
+                <div class="card">
+                    <h3>Avg Fare by Vendor</h3>
+                    <p class="card-desc">Bar chart comparing average prices</p>
+                    <div class="chart-wrap">
+                        <canvas id="barChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Line chart — timing / trend comparison per vendor -->
+                <div class="card">
+                    <h3>Price Range by Vendor</h3>
+                    <p class="card-desc">Min · Avg · Max fare comparison</p>
+                    <div class="chart-wrap">
+                        <canvas id="lineChart"></canvas>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </section>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
