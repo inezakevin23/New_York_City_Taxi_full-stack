@@ -1,0 +1,10 @@
+duplicates: 0
+missing_critical: 0
+nonpositive_trip_distance: 7
+negative_fare_amount: 0
+dropoff_before_pickup: 0
+nonpositive_passenger_count: 4
+huge_trip_distance: 0
+huge_fare_amount: 0
+cleaned_count: 489
+removed_total: 11

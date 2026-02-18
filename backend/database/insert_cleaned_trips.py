@@ -75,19 +75,35 @@ def main():
     parser.add_argument("--database", default="NYC_Taxi")
     parser.add_argument("--file", required=True)
     parser.add_argument("--batch", type=int, default=5000)
+    parser.add_argument("--limit", type=int, default=None, 
+                        help="Maximum number of rows to insert (optional, for testing)")
 
     args = parser.parse_args()
 
     # connecting to database
     conn = connect_db(args.host, args.user, args.password, args.database)
 
-    # loading zones
-    zones = load_taxi_zone_lookup("data/taxi_zone_lookup.csv")
+    # loading zones (use absolute path relative to repository layout)
+    tz_path = BASE_DIR.parent / "data" / "taxi_zone_lookup.csv"
+    if not tz_path.exists():
+        conn.close()
+        print(f"ERROR: zone lookup file not found: {tz_path}\nPlease generate `taxi_zone_lookup.csv` in the `backend/data` folder (see TESTING_GUIDE.md Step 3).")
+        return
+    zones = load_taxi_zone_lookup(str(tz_path))
 
     total_inserted = 0
+    rows_processed = 0
 
     # reading large file in chunks
     for chunk in pd.read_csv(args.file, chunksize=args.batch):
+        # respect the limit if specified
+        if args.limit and rows_processed >= args.limit:
+            break
+        
+        # trim chunk if it would exceed limit
+        if args.limit and rows_processed + len(chunk) > args.limit:
+            chunk = chunk.iloc[:args.limit - rows_processed]
+        
         print(f"Processing {len(chunk)} rows...")
 
         # integrate + clean + feature engineering
@@ -98,11 +114,38 @@ def main():
         # preparing rows for DB
         rows = prepare_rows(enriched)
 
-        # inserting into DB
-        inserted = insert_batch(conn, rows)
+        # verify referenced zones exist in `zones` table and filter rows accordingly
+        cur = conn.cursor()
+        cur.execute("SELECT LocationID FROM zones")
+        existing_zone_ids = set([r[0] for r in cur.fetchall()])
+        cur.close()
+
+        filtered_rows = []
+        skipped = 0
+        for r in rows:
+            pu = r[14]
+            do = r[15]
+            if (pu is None or pu in existing_zone_ids) and (do is None or do in existing_zone_ids):
+                filtered_rows.append(r)
+            else:
+                skipped += 1
+
+        if skipped:
+            print(f"Skipping {skipped} rows because PULocationID/DOLocationID not present in zones table")
+
+        if filtered_rows:
+            # inserting into DB
+            inserted = insert_batch(conn, filtered_rows)
+        else:
+            inserted = 0
 
         total_inserted += inserted
+        rows_processed += len(chunk)
         print(f"Inserted {inserted} rows (Total: {total_inserted})")
+        
+        if args.limit and rows_processed >= args.limit:
+            print(f"Reached limit of {args.limit} rows. Stopping.")
+            break
 
     conn.close()
     print("Done!")

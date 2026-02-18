@@ -28,7 +28,7 @@ def clean_data(df):
     df['tpep_dropoff_datetime'] = pd.to_datetime(df['tpep_dropoff_datetime'], errors='coerce')
 
     # ensuring numeric types
-    numeric_cols = ['VendorID', 'trip_distance', 'fare_amount', 'passenger_count', 'PU_LocationID', 'DO_LocationID', 'total_amount', 'tip_amount', 'extra', 'mta_tax', 'tolls_amount']
+    numeric_cols = ['VendorID', 'trip_distance', 'fare_amount', 'passenger_count', 'PULocationID', 'DOLocationID', 'total_amount', 'tip_amount', 'extra', 'mta_tax', 'tolls_amount']
     for col in numeric_cols:
         df[col] = pd.to_numeric(df[col], errors='coerce')
     
