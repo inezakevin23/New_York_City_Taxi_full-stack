@@ -19,8 +19,8 @@ function buildQueryParams() {
   if (vendor) params.append("vendor", vendor);
   if (minPrice) params.append("min_price", minPrice);
   if (maxPrice) params.append("max_price", maxPrice);
-  if (fromZone) params.append("from_zone", fromZone); // fixed: was appending to "vendor"
-  if (toZone) params.append("to_zone", toZone); // fixed: was typo "vwndor" + wrong value
+  if (fromZone) params.append("from_zone", fromZone); 
+  if (toZone) params.append("to_zone", toZone);
 
   return params.toString();
 }
