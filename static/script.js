@@ -172,6 +172,76 @@ function updateTable(data) {
 // ─── Render charts ────────────────────────────────────────────────────────────
 // summaryData  → from /analytics/price-summary  (grouped by vendor: min/avg/max fare)
 // tripsData    → from /analytics/trips          (individual rows with trip_speed, trip_distance)
+
+// Custom external tooltip that renders HTML (so <b> and <br/> work as requested)
+function externalHtmlTooltip(context) {
+  // Tooltip element
+  let tooltipEl = document.getElementById('chartjs-tooltip');
+  if (!tooltipEl) {
+    tooltipEl = document.createElement('div');
+    tooltipEl.id = 'chartjs-tooltip';
+    tooltipEl.style.position = 'absolute';
+    tooltipEl.style.pointerEvents = 'none';
+    tooltipEl.style.background = 'rgba(0,0,0,0.75)';
+    tooltipEl.style.color = '#fff';
+    tooltipEl.style.padding = '6px 8px';
+    tooltipEl.style.borderRadius = '6px';
+    tooltipEl.style.fontFamily = 'DM Mono, monospace';
+    tooltipEl.style.fontSize = '12px';
+    tooltipEl.style.zIndex = 2000;
+    document.body.appendChild(tooltipEl);
+  }
+
+  const tooltipModel = context.tooltip;
+  // Hide if no tooltip
+  if (!tooltipModel || tooltipModel.opacity === 0) {
+    tooltipEl.style.opacity = 0;
+    return;
+  }
+
+  // Use first dataPoint for content
+  const dataPoint = (tooltipModel.dataPoints && tooltipModel.dataPoints[0]) || null;
+  let xVal = '';
+  let yVal = '';
+
+  if (dataPoint) {
+    // category label (bar) is in dataPoint.label
+    if (dataPoint.label) {
+      xVal = dataPoint.label;
+    } else if (dataPoint.parsed && dataPoint.parsed.x != null) {
+      xVal = dataPoint.parsed.x;
+    } else if (dataPoint.raw && dataPoint.raw.x != null) {
+      xVal = dataPoint.raw.x;
+    }
+
+    if (dataPoint.parsed && dataPoint.parsed.y != null) {
+      yVal = dataPoint.parsed.y;
+    } else if (dataPoint.raw && dataPoint.raw.y != null) {
+      yVal = dataPoint.raw.y;
+    } else if (dataPoint.formattedValue) {
+      yVal = dataPoint.formattedValue;
+    }
+  }
+
+  // Format values: timestamp -> human string, numbers -> 2 decimals
+  if (typeof xVal === 'number') xVal = new Date(xVal).toLocaleString();
+  if (typeof yVal === 'number') yVal = Number(yVal).toFixed(2);
+
+  // Build HTML content exactly as requested
+  tooltipEl.innerHTML = `<b>Area: </b>${xVal} sq.ft<br/><b>Price: </b>$${yVal}k`;
+
+  // Position the tooltip near the caret within the chart canvas
+  const canvasRect = context.chart.canvas.getBoundingClientRect();
+  const caretX = tooltipModel.caretX || (tooltipModel.x || 0);
+  const caretY = tooltipModel.caretY || (tooltipModel.y || 0);
+  const left = canvasRect.left + window.scrollX + caretX + 10;
+  const top  = canvasRect.top  + window.scrollY + caretY - 40;
+
+  tooltipEl.style.left = left + 'px';
+  tooltipEl.style.top  = top  + 'px';
+  tooltipEl.style.opacity = 1;
+}
+
 function updateCharts(summaryData, tripsData) {
   if (barChart)  barChart.destroy();
   if (lineChart) lineChart.destroy();
@@ -186,6 +256,14 @@ function updateCharts(summaryData, tripsData) {
   const barAverages = summaryData.map(d => parseFloat(d.avg_price).toFixed(2));
   const barMins     = summaryData.map(d => parseFloat(d.min_price).toFixed(2));
   const barMaxes    = summaryData.map(d => parseFloat(d.max_price).toFixed(2));
+
+  // build bar chart options and use the external HTML tooltip
+  const barOptions = buildChartOptions("Fare ($)", textClr, gridClr);
+  barOptions.plugins = barOptions.plugins || {};
+  barOptions.plugins.tooltip = {
+    enabled: false, // disable default tooltip rendering
+    external: externalHtmlTooltip,
+  };
 
   barChart = new Chart(document.getElementById("barChart"), {
     type: "bar",
@@ -218,19 +296,21 @@ function updateCharts(summaryData, tripsData) {
         },
       ],
     },
-    options: buildChartOptions("Fare ($)", textClr, gridClr),
+    options: barOptions,
   });
 
-  // ── Line chart: trip speed vs distance, coloured by vendor ─────────────────
-  // We group tripsData rows by VendorID, then plot distance (x) vs speed (y)
-  // so the chart shows "how fast vendors travel for different trip lengths"
-
+  // ── Scatter chart: pickup time (x) vs distance (y), coloured by vendor ─────
+  // Build vendor groups where x is pickup timestamp (ms) and y is trip_distance (mi)
   const vendorGroups = {};
   (tripsData || []).forEach(row => {
-    if (row.trip_distance == null || row.trip_speed == null) return;
+    if (row.trip_distance == null || !row.tpep_pickup_datetime) return;
+    const t = new Date(row.tpep_pickup_datetime);
+    if (isNaN(t)) return;
+    const x = t.getTime();
+    const y = Number(row.trip_distance);
     const vid = "Vendor " + row.VendorID;
     if (!vendorGroups[vid]) vendorGroups[vid] = [];
-    vendorGroups[vid].push({ x: Number(row.trip_distance).toFixed(2), y: Number(row.trip_speed).toFixed(1) });
+    vendorGroups[vid].push({ x: x, y: y });
   });
 
   const vendorColors = {
@@ -242,29 +322,46 @@ function updateCharts(summaryData, tripsData) {
     label,
     data:            points,
     borderColor:     vendorColors[label]?.border || "rgba(100,100,200,1)",
-    backgroundColor: vendorColors[label]?.bg     || "rgba(100,100,200,0.1)",
-    pointRadius:     3,
-    showLine:        false,   // scatter — no connecting line
+    backgroundColor: vendorColors[label]?.bg     || "rgba(100,100,200,0.12)",
+    pointRadius:     4,
+    showLine:        false,
   }));
+
+  // build scatter options with time-formatted x-axis ticks and external tooltip
+  const scatterOptions = buildChartOptions("Distance (mi)", textClr, gridClr);
+  scatterOptions.scales = scatterOptions.scales || {};
+  scatterOptions.scales.x = {
+    type: 'linear', // timestamps in ms
+    title: { display: true, text: 'Pickup time', color: textClr, font: { family: 'DM Mono' } },
+    ticks: {
+      callback: function(value) {
+        try {
+          return new Date(value).toLocaleString();
+        } catch (e) {
+          return value;
+        }
+      },
+      color: textClr,
+      font: { family: 'DM Mono' }
+    },
+    grid: { color: gridClr },
+  };
+  scatterOptions.scales.y = {
+    title: { display: true, text: 'Distance (mi)', color: textClr, font: { family: 'DM Mono' } },
+    ticks: { font: { family: 'DM Mono' }, color: textClr },
+    grid:  { color: gridClr },
+  };
+
+  scatterOptions.plugins = scatterOptions.plugins || {};
+  scatterOptions.plugins.tooltip = {
+    enabled: false,
+    external: externalHtmlTooltip,
+  };
 
   lineChart = new Chart(document.getElementById("lineChart"), {
     type: "scatter",
     data: { datasets: scatterDatasets },
-    options: {
-      ...buildChartOptions("Speed (mph)", textClr, gridClr),
-      scales: {
-        x: {
-          title: { display: true, text: "Distance (mi)", color: textClr, font: { family: "DM Mono" } },
-          ticks: { font: { family: "DM Mono" }, color: textClr },
-          grid:  { color: gridClr },
-        },
-        y: {
-          title: { display: true, text: "Speed (mph)", color: textClr, font: { family: "DM Mono" } },
-          ticks: { font: { family: "DM Mono" }, color: textClr },
-          grid:  { color: gridClr },
-        },
-      },
-    },
+    options: scatterOptions,
   });
 }
 
