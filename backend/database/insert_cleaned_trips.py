@@ -22,6 +22,21 @@ def connect_db(host, user, password, database):
         database=database
     )
 
+# populating zones table first
+def insert_zones(conn, zones_df):
+    # use upsert so this can be run multiple times without error
+    query = (
+        "INSERT INTO zones (LocationID, Borough, Zone, service_zone) "
+        "VALUES (%s, %s, %s, %s) "
+        "ON DUPLICATE KEY UPDATE Borough=VALUES(Borough), Zone=VALUES(Zone), service_zone=VALUES(service_zone)"
+    )
+    rows = zones_df[["LocationID", "Borough", "Zone", "service_zone"]].values.tolist()
+
+    cursor = conn.cursor()
+    cursor.executemany(query, rows)
+    conn.commit()
+
+    return cursor.rowcount
 
 def prepare_rows(df):
     rows = []
@@ -90,6 +105,15 @@ def main():
         print(f"ERROR: zone lookup file not found: {tz_path}\nPlease generate `taxi_zone_lookup.csv` in the `backend/data` folder (see TESTING_GUIDE.md Step 3).")
         return
     zones = load_taxi_zone_lookup(str(tz_path))
+
+    # insert zones into DB first (upsert)
+    try:
+        inserted_zones = insert_zones(conn, zones)
+        print(f"Inserted/updated {inserted_zones} zones into `zones` table")
+    except Exception as e:
+        print(f"ERROR inserting zones: {e}")
+        conn.close()
+        return
 
     total_inserted = 0
     rows_processed = 0
