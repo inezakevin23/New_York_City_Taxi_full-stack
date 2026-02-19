@@ -14,6 +14,9 @@ It processes NYC taxi data, performs cleaning and feature engineering, and provi
 * Interactive frontend (charts + tables)
 
 ---
+## Link to deployed app
+https://nyc-taxi.ineza.tech/
+
 ## Demo video 
 (https://youtu.be/RWP4Bv2zUxk)
 ## ⚙️ Requirements
