@@ -9,9 +9,8 @@ app = Flask(__name__)
 # MySQL Configuration
 db_config = {
     "host": os.getenv("DB_HOST", "localhost"),
-    "user": os.getenv("DB_USER", "root"),
-    "password": os.getenv("DB_PASSWORD", ""),
-    # the schema in `backend/database/schema.sql` uses `NYC_Taxi`
+    "user": os.getenv("DB_USER", "kevin"),
+    "password": os.getenv("DB_PASSWORD", "1234"),
     "database": os.getenv("DB_NAME", "NYC_Taxi"),
     "port": int(os.getenv("DB_PORT", 3306))
 }
