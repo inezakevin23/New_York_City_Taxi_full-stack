@@ -151,6 +151,7 @@ def trips():
     cursor = conn.cursor(dictionary=True)
 
     try:
+        # always LEFT JOIN zones to return human-readable names for pickup/dropoff
         query = """
             SELECT
                 t.VendorID,
@@ -159,28 +160,34 @@ def trips():
                 t.PULocationID,
                 t.DOLocationID,
                 t.trip_distance,
-                t.fare_amount
+                t.passenger_count,
+                t.trip_duration,
+                t.trip_speed,
+                t.fare_per_mile,
+                t.fare_amount,
+                t.total_amount,
+                pu.Zone   AS pickup_zone,
+                pu.Borough AS pickup_borough,
+                do.Zone   AS dropoff_zone,
+                do.Borough AS dropoff_borough
             FROM trips t
+            LEFT JOIN zones pu ON t.PULocationID = pu.LocationID
+            LEFT JOIN zones do ON t.DOLocationID = do.LocationID
         """
 
-        joins  = []
         wheres = ["t.total_amount BETWEEN %s AND %s"]
         params = [min_price, max_price]
 
         if from_zone:
-            joins.append("JOIN zones pu ON t.PULocationID = pu.LocationID")
             wheres.append("pu.service_zone = %s")
             params.append(from_zone)
 
         if to_zone:
-            joins.append("JOIN zones do ON t.DOLocationID = do.LocationID")
             wheres.append("do.service_zone = %s")
             params.append(to_zone)
 
-        if joins:
-            query += " " + " ".join(joins)
-
-        query += " WHERE " + " AND ".join(wheres)
+        if wheres:
+            query += " WHERE " + " AND ".join(wheres)
 
         if vendor is not None:
             query += " AND t.VendorID = %s"
@@ -207,8 +214,27 @@ def trips():
                 row["trip_distance"] = float(row["trip_distance"])
             if row.get("fare_amount") is not None:
                 row["fare_amount"] = float(row["fare_amount"])
+            if row.get("total_amount") is not None:
+                row["total_amount"] = float(row["total_amount"])
+            if row.get("fare_per_mile") is not None:
+                row["fare_per_mile"] = float(row["fare_per_mile"]) if row["fare_per_mile"] != None else None
+            if row.get("trip_speed") is not None:
+                row["trip_speed"] = float(row["trip_speed"]) if row["trip_speed"] != None else None
+            if row.get("passenger_count") is not None:
+                try:
+                    row["passenger_count"] = int(row["passenger_count"]) if row["passenger_count"] != None else None
+                except Exception:
+                    row["passenger_count"] = row["passenger_count"]
+            if row.get("trip_duration") is not None:
+                try:
+                    row["trip_duration"] = int(row["trip_duration"]) if row["trip_duration"] != None else None
+                except Exception:
+                    row["trip_duration"] = row["trip_duration"]
             if row.get("VendorID") is not None:
                 row["VendorID"] = int(row["VendorID"])
+
+            # pickup/dropoff zone & borough are returned as strings (or None)
+            # leave them as-is so the front-end can display human-readable names
 
     except mysql.connector.Error:
         cursor.close()

@@ -120,6 +120,9 @@ function updateTable(data) {
 
   if (!data || data.length === 0) {
     setTableLoading(false, "No trips found for the selected filters.");
+    // clear mobile list too
+    const ml = document.getElementById('mobile-list');
+    if (ml) ml.innerHTML = '';
     return;
   }
 
@@ -140,6 +143,9 @@ function updateTable(data) {
   `;
 
   setTableLoading(false);
+
+  // Build mobile list HTML alongside table rows
+  const mobileItems = [];
 
   data.forEach(item => {
     // Build a readable zone string: "Zone, Borough" or fall back to the numeric ID
@@ -166,7 +172,77 @@ function updateTable(data) {
       <td class="fare">$${Number(item.total_amount ?? item.fare_amount).toFixed(2)}</td>
     `;
     tbody.appendChild(row);
+
+    // push mobile item data for later rendering
+    mobileItems.push({
+      vendor: item.VendorID,
+      pickup: formatDateTime(item.tpep_pickup_datetime),
+      dropoff: formatDateTime(item.tpep_dropoff_datetime),
+      pickup_zone: puLabel,
+      dropoff_zone: doLabel,
+      passengers: item.passenger_count ?? "—",
+      distance: item.trip_distance != null ? Number(item.trip_distance).toFixed(2) : "—",
+      duration: item.trip_duration != null ? item.trip_duration : "—",
+      speed: item.trip_speed != null ? Number(item.trip_speed).toFixed(1) : "—",
+      fare: item.fare_amount != null ? Number(item.fare_amount).toFixed(2) : "—",
+      per_mile: item.fare_per_mile != null ? Number(item.fare_per_mile).toFixed(2) : null,
+      total: Number(item.total_amount ?? item.fare_amount).toFixed(2),
+    });
   });
+
+  // render mobile list (JS will show/hide via CSS based on viewport)
+  renderMobileList(mobileItems);
+}
+
+// Render small-item cards for mobile/tablet
+function renderMobileList(items) {
+  const container = document.getElementById('mobile-list');
+  if (!container) return;
+  if (!items || items.length === 0) { container.innerHTML = ''; return; }
+
+  // build HTML string for performance
+  const html = items.map(it => {
+    const perMile = it.per_mile != null ? `$${it.per_mile}/mi` : '—';
+    return `
+      <article class="small-item">
+        <header class="si-header">
+          <span class="vendor-badge vendor-${it.vendor}">V${it.vendor}</span>
+          <div class="si-times">
+            <div class="si-pick">${it.pickup}</div>
+            <div class="si-drop">${it.dropoff}</div>
+          </div>
+        </header>
+        <div class="si-body">
+          <div class="si-row"><strong>From:</strong> <span>${escapeHtml(it.pickup_zone)}</span></div>
+          <div class="si-row"><strong>To:</strong> <span>${escapeHtml(it.dropoff_zone)}</span></div>
+          <div class="si-row si-meta">
+            <span>Passengers: ${it.passengers}</span>
+            <span>Distance: ${it.distance} mi</span>
+            <span>Duration: ${it.duration} min</span>
+            <span>Speed: ${it.speed} mph</span>
+          </div>
+        </div>
+        <footer class="si-footer">
+          <div class="si-fare">Fare: <span class="fare">$${it.fare}</span></div>
+          <div class="si-total">Total: <span class="fare">$${it.total}</span></div>
+          <div class="si-permile">${perMile}</div>
+        </footer>
+      </article>
+    `;
+  }).join('');
+
+  container.innerHTML = html;
+}
+
+// simple escape to avoid accidental HTML injection from DB strings
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 // ─── Render charts ────────────────────────────────────────────────────────────

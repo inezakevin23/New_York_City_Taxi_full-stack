@@ -331,6 +331,42 @@ section h2 {
     max-height: 220px;
 }
 
+/* Mobile list (small-item) styles */
+.mobile-list { display: none; padding: 12px; }
+.mobile-list .small-item {
+    background: var(--surface);
+    border: 1px solid var(--border-2);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+    font-family: Arial, sans-serif;
+    color: var(--ink);
+}
+.mobile-list .si-header { display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+.mobile-list .si-header .vendor-badge { padding:4px 8px; border-radius:6px; font-size:13px; }
+.mobile-list .si-times { font-family: var(--font-mono); font-size:12px; color: var(--ink-3); }
+.mobile-list .si-body .si-row { margin:6px 0; font-size:14px; }
+.mobile-list .si-body .si-meta { display:flex; gap:8px; flex-wrap:wrap; font-size:13px; color:var(--ink-3); }
+.mobile-list .si-footer { display:flex; gap:12px; align-items:center; margin-top:10px; font-size:14px; }
+.mobile-list .si-footer .fare { color: var(--primary); font-weight:600; }
+
+/* Responsive switch: show mobile list on small screens and hide table */
+@media screen and (max-width: 760px) {
+    .table-wrapper { border: none; }
+    .price-table { display: none !important; }
+    .mobile-list { display: block; }
+    /* reduce padding for main section on phones */
+    .main-section { padding: 16px 14px 48px; }
+}
+
+/* Slightly larger breakpoint for tablet: show both but stack */
+@media screen and (min-width: 761px) and (max-width: 900px) {
+    /* show mobile list above table for easier scanning on small tablets */
+    .mobile-list { display: block; }
+    .price-table { display: table; width:100%; }
+    .table-wrapper { display: block; }
+}
+
 /* ─── Responsive ─────────────────────────────────────────────── */
 @media screen and (max-width: 900px) {
     .comparison-grid { grid-template-columns: 1fr; }
