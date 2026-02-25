@@ -51,27 +51,28 @@ def price_summary():
                 t.VendorID,
                 MIN(t.total_amount) AS min_price,
                 AVG(t.total_amount) AS avg_price,
-                MAX(t.total_amount) AS max_price
+                MAX(t.total_amount) AS max_price,
+                AVG(t.fare_per_mile) AS avg_fare_per_mile,
+                AVG(t.passenger_count) AS avg_passenger_count,
+                AVG(t.trip_duration) AS avg_trip_duration,
+                AVG(t.trip_speed) AS avg_trip_speed
             FROM trips t
         """
 
-        joins  = []
+        # always LEFT JOIN zones so we can return human-friendly zone names
+        query += " LEFT JOIN zones pu ON t.PULocationID = pu.LocationID"
+        query += " LEFT JOIN zones do ON t.DOLocationID = do.LocationID"
+
         wheres = ["t.total_amount BETWEEN %s AND %s"]
         params = [min_price, max_price]
 
-        # NOTE: the DB table is `zones` in backend/database/schema.sql
         if from_zone:
-            joins.append("JOIN zones pu ON t.PULocationID = pu.LocationID")
             wheres.append("pu.service_zone = %s")
             params.append(from_zone)
 
         if to_zone:
-            joins.append("JOIN zones do ON t.DOLocationID = do.LocationID")
             wheres.append("do.service_zone = %s")
             params.append(to_zone)
-
-        if joins:
-            query += " " + " ".join(joins)
 
         query += " WHERE " + " AND ".join(wheres)
 
@@ -92,9 +93,24 @@ def price_summary():
                 r["avg_price"] = float(r["avg_price"])
             if isinstance(r.get("max_price"), Decimal):
                 r["max_price"] = float(r["max_price"])
+            # averages may come back as Decimal or floats
+            if isinstance(r.get("avg_fare_per_mile"), Decimal):
+                r["avg_fare_per_mile"] = float(r["avg_fare_per_mile"])
+            if isinstance(r.get("avg_passenger_count"), Decimal):
+                r["avg_passenger_count"] = float(r["avg_passenger_count"])
+            if isinstance(r.get("avg_trip_duration"), Decimal):
+                r["avg_trip_duration"] = float(r["avg_trip_duration"])
+            if isinstance(r.get("avg_trip_speed"), Decimal):
+                r["avg_trip_speed"] = float(r["avg_trip_speed"])
             # ensure VendorID is simple int
             if r.get("VendorID") is not None:
                 r["VendorID"] = int(r["VendorID"])
+
+            # attach sample zone names if available
+            if r.get("pu.Zone"):
+                r["pickup_zone"] = r.pop("pu.Zone")
+            if r.get("do.Zone"):
+                r["dropoff_zone"] = r.pop("do.Zone")
 
     except mysql.connector.Error as e:
         # log and return a simple JSON error (avoid leaking DB internals)
@@ -233,8 +249,6 @@ def trips():
             if row.get("VendorID") is not None:
                 row["VendorID"] = int(row["VendorID"])
 
-            # pickup/dropoff zone & borough are returned as strings (or None)
-            # leave them as-is so the front-end can display human-readable names
 
     except mysql.connector.Error:
         cursor.close()
